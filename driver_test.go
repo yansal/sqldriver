@@ -43,8 +43,12 @@ func TestSelectNow(t *testing.T) {
 
 	db := sql.OpenDB(connector)
 	defer db.Close()
+
+	ctx := context.Background()
+	if err := db.PingContext(ctx); err != nil {
+		t.Fatal(err)
+	}
 	var (
-		ctx   = context.Background()
 		query = `select now()`
 		now   time.Time
 	)

@@ -30,9 +30,9 @@ type wrappedConn struct {
 	NextFunc
 }
 
-func (w wrappedConn) QueryContext(ctx context.Context, query string, args []driver.NamedValue) (rows driver.Rows, err error) {
+func (w wrappedConn) QueryContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Rows, error) {
 	start := time.Now()
-	rows, err = w.Conn.(driver.QueryerContext).QueryContext(ctx, query, args)
+	rows, err := w.Conn.(driver.QueryerContext).QueryContext(ctx, query, args)
 	if w.QueryContextFunc != nil {
 		w.QueryContextFunc(query, args, time.Since(start), err)
 	}
@@ -47,9 +47,9 @@ type wrappedRows struct {
 	NextFunc
 }
 
-func (w wrappedRows) Next(dest []driver.Value) (err error) {
+func (w wrappedRows) Next(dest []driver.Value) error {
 	start := time.Now()
-	err = w.Rows.Next(dest)
+	err := w.Rows.Next(dest)
 	if w.NextFunc != nil {
 		w.NextFunc(dest, time.Since(start), err)
 	}
