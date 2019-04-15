@@ -8,26 +8,75 @@ import (
 
 type Driver struct {
 	driver.Driver
-	QueryContextFunc
+	BeginTxFunc
+	CommitFunc
 	NextFunc
+	QueryContextFunc
+	RollbackFunc
 }
 
-type QueryContextFunc func(string, []driver.NamedValue, time.Duration, error)
+type BeginTxFunc func(driver.TxOptions, time.Duration, error)
+type CommitFunc func(time.Duration, error)
 type NextFunc func([]driver.Value, time.Duration, error)
+type QueryContextFunc func(string, []driver.NamedValue, time.Duration, error)
+type RollbackFunc func(time.Duration, error)
 
 func (d Driver) Open(name string) (driver.Conn, error) {
 	conn, err := d.Driver.Open(name)
 	return wrappedConn{
 		Conn:             conn,
-		QueryContextFunc: d.QueryContextFunc,
+		BeginTxFunc:      d.BeginTxFunc,
+		CommitFunc:       d.CommitFunc,
 		NextFunc:         d.NextFunc,
+		QueryContextFunc: d.QueryContextFunc,
+		RollbackFunc:     d.RollbackFunc,
 	}, err
 }
 
 type wrappedConn struct {
 	driver.Conn
-	QueryContextFunc
+	BeginTxFunc
+	CommitFunc
 	NextFunc
+	QueryContextFunc
+	RollbackFunc
+}
+
+func (w wrappedConn) BeginTx(ctx context.Context, opts driver.TxOptions) (driver.Tx, error) {
+	start := time.Now()
+	tx, err := w.Conn.(driver.ConnBeginTx).BeginTx(ctx, opts)
+	if w.BeginTxFunc != nil {
+		w.BeginTxFunc(opts, time.Since(start), err)
+	}
+	return wrappedTx{
+		Tx:           tx,
+		CommitFunc:   w.CommitFunc,
+		RollbackFunc: w.RollbackFunc,
+	}, err
+}
+
+type wrappedTx struct {
+	driver.Tx
+	CommitFunc
+	RollbackFunc
+}
+
+func (w wrappedTx) Commit() error {
+	start := time.Now()
+	err := w.Tx.Commit()
+	if w.CommitFunc != nil {
+		w.CommitFunc(time.Since(start), err)
+	}
+	return err
+}
+
+func (w wrappedTx) Rollback() error {
+	start := time.Now()
+	err := w.Tx.Rollback()
+	if w.RollbackFunc != nil {
+		w.RollbackFunc(time.Since(start), err)
+	}
+	return err
 }
 
 func (w wrappedConn) QueryContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Rows, error) {
