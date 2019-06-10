@@ -9,6 +9,7 @@ type Connector struct {
 	Connector driver.Connector
 	BeginTxFunc
 	CommitFunc
+	ExecContextFunc
 	NextFunc
 	QueryContextFunc
 	RollbackFunc
@@ -20,6 +21,7 @@ func (c *Connector) Connect(ctx context.Context) (driver.Conn, error) {
 		Conn:             conn,
 		BeginTxFunc:      c.BeginTxFunc,
 		CommitFunc:       c.CommitFunc,
+		ExecContextFunc:  c.ExecContextFunc,
 		NextFunc:         c.NextFunc,
 		QueryContextFunc: c.QueryContextFunc,
 		RollbackFunc:     c.RollbackFunc,
@@ -31,6 +33,7 @@ func (c *Connector) Driver() driver.Driver {
 		Driver:           c.Connector.Driver(),
 		BeginTxFunc:      c.BeginTxFunc,
 		CommitFunc:       c.CommitFunc,
+		ExecContextFunc:  c.ExecContextFunc,
 		NextFunc:         c.NextFunc,
 		QueryContextFunc: c.QueryContextFunc,
 		RollbackFunc:     c.RollbackFunc,

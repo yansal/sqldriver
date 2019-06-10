@@ -10,6 +10,7 @@ type Driver struct {
 	driver.Driver
 	BeginTxFunc
 	CommitFunc
+	ExecContextFunc
 	NextFunc
 	QueryContextFunc
 	RollbackFunc
@@ -17,6 +18,7 @@ type Driver struct {
 
 type BeginTxFunc func(driver.TxOptions, time.Duration, error)
 type CommitFunc func(time.Duration, error)
+type ExecContextFunc func(string, []driver.NamedValue, time.Duration, error)
 type NextFunc func([]driver.Value, time.Duration, error)
 type QueryContextFunc func(string, []driver.NamedValue, time.Duration, error)
 type RollbackFunc func(time.Duration, error)
@@ -27,6 +29,7 @@ func (d Driver) Open(name string) (driver.Conn, error) {
 		Conn:             conn,
 		BeginTxFunc:      d.BeginTxFunc,
 		CommitFunc:       d.CommitFunc,
+		ExecContextFunc:  d.ExecContextFunc,
 		NextFunc:         d.NextFunc,
 		QueryContextFunc: d.QueryContextFunc,
 		RollbackFunc:     d.RollbackFunc,
@@ -37,6 +40,7 @@ type wrappedConn struct {
 	driver.Conn
 	BeginTxFunc
 	CommitFunc
+	ExecContextFunc
 	NextFunc
 	QueryContextFunc
 	RollbackFunc
@@ -89,6 +93,15 @@ func (w wrappedConn) QueryContext(ctx context.Context, query string, args []driv
 		Rows:     rows,
 		NextFunc: w.NextFunc,
 	}, err
+}
+
+func (w wrappedConn) ExecContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Result, error) {
+	start := time.Now()
+	result, err := w.Conn.(driver.ExecerContext).ExecContext(ctx, query, args)
+	if w.ExecContextFunc != nil {
+		w.ExecContextFunc(query, args, time.Since(start), err)
+	}
+	return result, err
 }
 
 type wrappedRows struct {
