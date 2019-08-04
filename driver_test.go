@@ -25,7 +25,7 @@ func TestSelectNow(t *testing.T) {
 
 	connector := &Connector{
 		Connector: pqconnector,
-		QueryContextFunc: func(query string, args []driver.NamedValue, duration time.Duration, err error) {
+		QueryContextFunc: func(ctx context.Context, query string, args []driver.NamedValue, duration time.Duration, err error) {
 			t.Logf("query=%q args=%+v duration=%s err=%v", query, args, duration, err)
 			assertf(t, query == `select now()`, "got %q", query)
 			assertf(t, len(args) == 0, "got %d args", len(args))
